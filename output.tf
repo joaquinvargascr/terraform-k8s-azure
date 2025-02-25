@@ -20,11 +20,11 @@ output "cluster_name" {
   value = azurerm_kubernetes_cluster.aks.name
 }
 
-output "loadbalancer_ip" {
+output "public_ip" {
   value = local.loadbalancer_ip
 }
 
 
-output "loadbalancer_url" {
+output "external_url" {
   value = local.load_balancer_url
 }

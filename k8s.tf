@@ -4,66 +4,168 @@ resource "kubernetes_namespace" "ns" {
   }
 }
 
-resource "kubernetes_pod" "nginx" {
+resource "kubernetes_deployment" "app-echo" {
   metadata {
-    name      = "${var.aks_name}-nginx"
-    namespace = kubernetes_namespace.ns.metadata.0.name
+    name      = "${var.aks_name}-app-echo"
+    namespace = kubernetes_namespace.ns.metadata[0].name
     labels = {
-      app = "${var.aks_name}-nginx"
+      app = "${var.aks_name}-app-echo"
     }
   }
-
   spec {
-    container {
-      image = "nginx:latest"
-      name  = "${var.aks_name}-nginx"
-      port {
-        container_port = 80
+    replicas = 2
+
+    selector {
+      match_labels = {
+        app = "${var.aks_name}-app-echo"
+      }
+    }
+
+    template {
+      metadata {
+        labels = {
+          app = "${var.aks_name}-app-echo"
+        }
+      }
+      spec {
+        container {
+          image = "ealen/echo-server:latest"
+          name  = "${var.aks_name}-app-echo"
+          port {
+            container_port = 80
+          }
+        }
       }
     }
   }
 }
 
-resource "kubernetes_service" "nginx-svc" {
+resource "kubernetes_deployment" "app-apache" {
   metadata {
-    name      = "${var.aks_name}-nginx-svc"
-    namespace = kubernetes_namespace.ns.metadata.0.name
+    name      = "${var.aks_name}-app-apache"
+    namespace = kubernetes_namespace.ns.metadata[0].name
+    labels = {
+      app = "${var.aks_name}-app-apache"
+    }
+  }
+  spec {
+    replicas = 2
+
+    selector {
+      match_labels = {
+        app = "${var.aks_name}-app-apache"
+      }
+    }
+
+    template {
+      metadata {
+        labels = {
+          app = "${var.aks_name}-app-apache"
+        }
+      }
+      spec {
+        container {
+          image = "httpd:2.4"
+          name  = "${var.aks_name}-app-apache"
+        }
+      }
+    }
+  }
+}
+
+resource "kubernetes_deployment" "app-nginx" {
+  metadata {
+    name      = "${var.aks_name}-app-nginx"
+    namespace = kubernetes_namespace.ns.metadata[0].name
+    labels = {
+      app = "${var.aks_name}-app-nginx"
+    }
+  }
+  spec {
+    replicas = 2
+
+    selector {
+      match_labels = {
+        app = "${var.aks_name}-app-nginx"
+      }
+    }
+
+    template {
+      metadata {
+        labels = {
+          app = "${var.aks_name}-app-nginx"
+        }
+      }
+      spec {
+        container {
+          image = "nginx:1.27"
+          name  = "${var.aks_name}-app-nginx"
+        }
+      }
+    }
+  }
+}
+
+resource "kubernetes_service" "app_nginx" {
+  metadata {
+    name      = "${var.aks_name}-app-nginx-svc"
+    namespace = kubernetes_namespace.ns.metadata[0].name
   }
 
   spec {
     selector = {
-      app = kubernetes_pod.nginx.metadata.0.labels.app
+      app = "${var.aks_name}-app-nginx"
     }
+
     port {
+      protocol    = "TCP"
       port        = 80
       target_port = 80
     }
+
+    type = "ClusterIP"
+
   }
 }
 
-resource "helm_release" "nginx-ingress" {
-  name             = "${var.aks_name}-nginx-ingress"
-  repository       = "https://kubernetes.github.io/ingress-nginx"
-  chart            = "ingress-nginx"
-  namespace        = "ingress"
-  create_namespace = true
-
-  set {
-    name  = "controller.replicaCount"
-    value = 2
+resource "kubernetes_service" "app_apache" {
+  metadata {
+    name      = "${var.aks_name}-app-apache-svc"
+    namespace = kubernetes_namespace.ns.metadata[0].name
   }
 
+  spec {
+    selector = {
+      app = "${var.aks_name}-app-apache"
+    }
+
+    port {
+      protocol    = "TCP"
+      port        = 80
+      target_port = 80
+    }
+
+    type = "ClusterIP"
+  }
 }
 
-resource "helm_release" "cert-manager" {
-  name             = "${var.aks_name}-cert-manager"
-  repository       = "https://charts.jetstack.io"
-  chart            = "cert-manager"
-  namespace        = "cert-manager"
-  create_namespace = true
+resource "kubernetes_service" "app_echo" {
+  metadata {
+    name      = "${var.aks_name}-app-echo-svc"
+    namespace = kubernetes_namespace.ns.metadata[0].name
+  }
 
-  set {
-    name  = "installCRDs"
-    value = true
+  spec {
+    selector = {
+      app = kubernetes_deployment.app-echo.metadata[0].name
+    }
+
+    port {
+      protocol    = "TCP"
+      port        = 80
+      target_port = 80
+    }
+
+    type = "ClusterIP"
   }
 }

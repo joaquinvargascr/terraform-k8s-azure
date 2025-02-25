@@ -1,24 +1,57 @@
-resource "kubernetes_ingress" "example_ingress" {
+resource "kubernetes_ingress_v1" "webapp_ingress" {
   metadata {
-    name = "example-ingress"
-    namespace = kubernetes_namespace.ns.metadata.0.name
+    name      = "${var.aks_name}-webapp-ingress"
+    namespace = kubernetes_namespace.ns.metadata[0].name
+    annotations = {
+      "nginx.ingress.kubernetes.io/rewrite-target" = "/"
+    }
   }
 
   spec {
-    backend {
-      service_name = kubernetes_service.nginx-svc.metadata.0.name
-      service_port = kubernetes_service.nginx-svc.spec.0.port.0.port
-    }
+    ingress_class_name = "nginx"
 
     rule {
       http {
         path {
-          backend {
-            service_name = kubernetes_service.nginx-svc.metadata.0.name
-            service_port = kubernetes_service.nginx-svc.spec.0.port.0.port
-          }
+          path      = "/"
+          path_type = "Prefix"
 
-          path = "/app1/*"
+          backend {
+            service {
+              name = kubernetes_service.app_echo.metadata[0].name
+              port {
+                number = kubernetes_service.app_echo.spec[0].port[0].port
+              }
+            }
+          }
+        }
+
+        path {
+          path      = "/apache"
+          path_type = "Prefix"
+
+          backend {
+            service {
+              name = kubernetes_service.app_apache.metadata[0].name
+              port {
+                number = kubernetes_service.app_apache.spec[0].port[0].port
+              }
+            }
+          }
+        }
+
+        path {
+          path      = "/nginx"
+          path_type = "Prefix"
+
+          backend {
+            service {
+              name = kubernetes_service.app_nginx.metadata[0].name
+              port {
+                number = kubernetes_service.app_nginx.spec[0].port[0].port
+              }
+            }
+          }
         }
       }
     }
